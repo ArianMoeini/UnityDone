@@ -4,13 +4,20 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Sentis;
 using UnityEngine;
+using TMPro;
 
 public class zedcameraHandler : MonoBehaviour
 {
+
     
     public ZEDManager zedManager;
     int frameCounter = 0;
     Queue<float[]> sequenceQueue = new Queue<float[]>();
+    public string Action { get; private set; }
+    
+
+    public TextMeshProUGUI probability; // Reference to the UI element for boxing counter
+
 
     // Start is called before the first frame update
     void Start()
@@ -20,16 +27,11 @@ public class zedcameraHandler : MonoBehaviour
         //Screen.SetResolution(1920/2, 1080/2, true);
         zedManager.OnZEDReady += ZedManager_OnZEDReady;
         zedManager.OnBodyTracking += ZedManager_OnBodyTracking;
-        //zedManager.OnBodyTracking_SDKData += ZedManager_OnBodyTracking_SDKData;
 
     }
 
     private void ZedManager_OnBodyTracking_SDKData(sl.Bodies bodies)
     {
-        //var hej = bodies;
-
-       // Debug.Log(bodies.bodyList[0].keypoint2D[15]);
-
         throw new System.NotImplementedException();
     }
 
@@ -109,14 +111,15 @@ public class zedcameraHandler : MonoBehaviour
             TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
 
             outputTensor.MakeReadable();
-            outputTensor.PrintDataPart(69);
+            //outputTensor.PrintDataPart(69);     // OUTPUT THE DIFFEREN PROBABILITIES
 
-            //UnityEngine.Debug.Log("output" + outputTensor);
-
+          
+           
+            
 
             float[] tensorArray = outputTensor.ToReadOnlyArray();
 
-        //UnityEngine.Debug.Log("output ARRAY" + tensorArray);
+        
 
 
             List<float[]> outputs = new List<float[]>();
@@ -129,21 +132,28 @@ public class zedcameraHandler : MonoBehaviour
                 outputs.Add(group);
             }
 
-            //foreach(var group in outputs ) { foreach(var g in group) Debug.Log(g); }
+            this.probability.text = "Probability: " + string.Join(", ", outputs[0].Select(x => Math.Round(x, 2)));
 
 
             List<string> actions = new List<string> { "boxing", "notFighting", "kick" };
 
-            // foreach (var group in outputs) { UnityEngine.Debug.Log(actions[group.IndexOf(group,group.Max())]); }
+            
 
             foreach (var group in outputs)
             {
                 int maxIndex = Array.IndexOf(group, group.Max());
-                UnityEngine.Debug.Log(actions[maxIndex]);
-            }
+                //UnityEngine.Debug.Log(actions[maxIndex]);
+                if (group[maxIndex] >= 0.5)
+                {
+                    this.Action = actions[maxIndex];
+                }
 
-            //clear sequenceQueue and reset frameCounter
-            sequenceQueue.Clear(); // clear
+            }
+               
+
+
+    //clear sequenceQueue and reset frameCounter
+    sequenceQueue.Clear(); // clear
             //sequenceQueue = new Queue<float[]>(); // reset
             frameCounter = 0;
             tensor?.Dispose();
@@ -158,15 +168,6 @@ public class zedcameraHandler : MonoBehaviour
     }
 
 
-
-
-    // for (int i = 0; i < bodyFrame.rawbodies.bodyList[0].keypoint2D.Length; i ++)
-    //{   
-    //Debug.Log(zedManager);
-
-    //Debug.Log(ConvertZED2DToUnity(bodyFrame.rawbodies.bodyList[0].keypoint2D[15],Screen.height));
-    //}
-    //Debug.Log(ConvertZED2DToUnity(bodyFrame.rawbodies.bodyList[0].keypoint2D[15],Screen.height));
 
     public static Vector2 ConvertZED2DToUnity(Vector2 zedPoint, float screenHeight)
     {
